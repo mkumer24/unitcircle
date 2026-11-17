@@ -40,7 +40,18 @@
     .hotspot:hover { fill: #94a3b8; }
     .hotspot.correct { fill: #22c55e; stroke: #15803d; }
     .hotspot.wrong { fill: #ef4444; stroke: #b91c1c; }
-    .hotspot.answer { fill: #60a5fa; stroke: #1d4ed8; }
+     .hotspot.answer { fill: #60a5fa; stroke: #1d4ed8; }
+    .hotspot.done { fill: #16a34a; stroke: #166534; }
+    .done-check { pointer-events: none; font-size: 20px; font-weight: 900; fill: white; text-anchor: middle; dominant-baseline: central; }
+    .hotspot.done:hover { fill: #16a34a; }
+    .primary { background: #1d4ed8; color: white; border-color: #1d4ed8; font-weight: bold; }
+    .primary:hover { background: #1e40af; }
+    .challenge-progress { font-size: 1rem; font-weight: 700; margin-top: 7px; color: #1e40af; }
+    .completion { font-weight: 800; color: #166534; font-size: 1.3rem; }
+    .hidden { display: none !important; }
+    select:disabled, button:disabled { opacity: .5; cursor: not-allowed; }
+    .game-label { font-weight: 700; }
+    
     .center-dot { fill: #0f172a; }
     .small-note { text-align: center; color: #6b7280; font-size: .95rem; margin-top: -2px; }
     @media (max-width: 850px) { .topbar { grid-template-columns: 1fr; text-align: center; } .scoreboard { text-align: center; } .timer-buttons { justify-content: center; } }
@@ -54,13 +65,19 @@
         <p>Find the angle or ordered pair on the unit circle.</p>
       </div>
       <div class="controls">
-        <label for="mode">Mode:</label>
+        <label for="gameType" class="game-label">Game:</label>
+        <select id="gameType">
+          <option value="continuous">Continuous Practice</option>
+          <option value="challenge">16-Angle Challenge</option>
+        </select>
+        <label for="mode">Questions:</label>
         <select id="mode">
           <option value="mixed">Mixed</option>
           <option value="degrees">Degrees Only</option>
           <option value="radians">Radians Only</option>
           <option value="points">Coordinates Only</option>
         </select>
+        <button id="startBtn" class="primary hidden">Start Challenge</button>
         <button id="newQuestionBtn">New Question</button>
         <button id="resetBtn">Reset Game</button>
       </div>
@@ -70,6 +87,7 @@
         <div><strong>Score:</strong> <span id="score">0</span> / <span id="attempts">0</span></div>
         <div><strong>Streak:</strong> <span id="streak">0</span></div>
         <div><strong>Best Streak:</strong> <span id="bestStreak">0</span></div>
+        <div id="challengeProgress" class="challenge-progress hidden">Completed: <span id="completed">0</span> / 16 · Misses: <span id="misses">0</span></div>
       </div>
     </div>
     <div class="question-card">
@@ -88,7 +106,7 @@
         <g id="hotspots"></g>
       </svg>
     </div>
-    <div class="small-note">The stopwatch starts on your first angle and runs until paused or reset.</div>
+    <div class="small-note" id="instructions">Continuous Practice: answer as many as you like. The stopwatch runs while you play.</div>
   </div>
   <script>
     const angles = [
@@ -132,9 +150,11 @@
     const $ = id => document.getElementById(id);
     const hotspotsGroup = $("hotspots"), feedback = $("feedback");
     let current = null, score = 0, attempts = 0, streak = 0, bestStreak = 0;
-    let locked = false, bag = [], nextQuestionTimeout = null;
-    // Stopwatch: elapsed time is based on performance.now() rather than interval ticks.
+    let locked = false, bag = [], nextQuestionTimeout = null, flashTimeout = null;
+    let challengeStarted = false, challengeFinished = false, solved = new Set(), misses = 0;
+    // Timekeeping using a monotonic clock; stopped time does not count.
     let elapsedBeforePause = 0, startedAt = null, paused = false;
+    const challengeMode = () => $("gameType").value === "challenge";
     function elapsedMs() { return elapsedBeforePause + (startedAt === null ? 0 : performance.now() - startedAt); }
     function updateTimer() {
       const totalSeconds = Math.floor(elapsedMs() / 1000);
@@ -142,25 +162,30 @@
       const seconds = String(totalSeconds % 60).padStart(2, "0");
       $("timer").textContent = `${minutes}:${seconds}`;
     }
-    function beginTimerIfNeeded() {
-      if (!paused && startedAt === null) startedAt = performance.now();
+    function stopClock() {
+      elapsedBeforePause = elapsedMs();
+      startedAt = null;
+      updateTimer();
     }
+    function startClock() { if (!paused && startedAt === null) startedAt = performance.now(); }
     function togglePause() {
-      if (!paused) {
-        elapsedBeforePause = elapsedMs();
-        startedAt = null;
-        paused = true;
-        $("pauseBtn").textContent = "Resume";
-      } else {
+      if (challengeMode() && (!challengeStarted || challengeFinished)) return;
+      if (paused) {
         paused = false;
         startedAt = performance.now();
         $("pauseBtn").textContent = "Pause";
+        feedback.textContent = "";
+      } else {
+        stopClock();
+        paused = true;
+        $("pauseBtn").textContent = "Resume";
+        feedback.textContent = "Paused — press Resume to continue.";
+        feedback.className = "feedback";
       }
-      updateTimer();
     }
-    function resetTimer() {
+    function resetTimer(start = false) {
       elapsedBeforePause = 0;
-      startedAt = performance.now();
+      startedAt = start ? performance.now() : null;
       paused = false;
       $("pauseBtn").textContent = "Pause";
       updateTimer();
@@ -174,7 +199,7 @@
       return arr;
     }
     function refillBag() { bag = shuffle([...angles]); }
-    function getNextAngle() { if (!bag.length) refillBag(); return bag.pop(); }
+    function getNextAngle() { if (!bag.length && !challengeMode()) refillBag(); return bag.pop() || null; }
     function polarToXY(deg) {
       const rad = deg * Math.PI / 180;
       return { x: 350 + 240 * Math.cos(rad), y: 350 - 240 * Math.sin(rad) };
@@ -183,6 +208,7 @@
       hotspotsGroup.innerHTML = "";
       angles.forEach(item => {
         const p = polarToXY(item.deg);
+        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
         const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
         dot.setAttribute("cx", p.x);
         dot.setAttribute("cy", p.y);
@@ -191,83 +217,161 @@
         dot.setAttribute("data-deg", item.deg);
         dot.setAttribute("tabindex", "0");
         dot.setAttribute("role", "button");
-        dot.setAttribute("aria-label", `Angle location ${item.deg} degrees`);
+        dot.setAttribute("aria-label", `Unit circle location ${item.deg} degrees`);
         dot.addEventListener("click", handleGuess);
         dot.addEventListener("keydown", event => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            handleGuess.call(dot);
-          }
+          if (event.key === "Enter" || event.key === " ") { event.preventDefault(); handleGuess.call(dot); }
         });
-        hotspotsGroup.appendChild(dot);
+        const check = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        check.setAttribute("x", p.x);
+        check.setAttribute("y", p.y + 1);
+        check.setAttribute("class", "done-check");
+        check.textContent = "✓";
+        check.style.display = "none";
+        g.append(dot, check);
+        hotspotsGroup.appendChild(g);
       });
     }
-    function clearHotspots() {
-      document.querySelectorAll(".hotspot").forEach(h => h.classList.remove("correct", "wrong", "answer"));
-    }
-    function mark(deg, className) {
-      const h = document.querySelector(`.hotspot[data-deg="${deg}"]`);
-      if (h) h.classList.add(className);
+    function refreshHotspots(wrong = null) {
+      document.querySelectorAll(".hotspot").forEach(dot => {
+        const deg = Number(dot.getAttribute("data-deg"));
+        const done = challengeMode() && solved.has(deg);
+        dot.setAttribute("class", "hotspot" + (done ? " done" : "") + (deg === wrong ? " wrong" : ""));
+        dot.nextSibling.style.display = done ? "" : "none";
+        dot.setAttribute("aria-label", `Unit circle location ${deg} degrees${done ? ', completed' : ''}`);
+      });
     }
     function updateScoreboard() {
       $("score").textContent = score;
       $("attempts").textContent = attempts;
       $("streak").textContent = streak;
       $("bestStreak").textContent = bestStreak;
+      $("completed").textContent = solved.size;
+      $("misses").textContent = misses;
     }
-    function showQuestion() {
-      clearTimeout(nextQuestionTimeout);
-      nextQuestionTimeout = null;
-      locked = false;
-      clearHotspots();
-      feedback.textContent = "";
-      feedback.className = "feedback";
-      current = getNextAngle();
+    function displayQuestion() {
       const mode = $("mode").value;
       const types = ["degrees", "radians", "points"];
       const displayMode = mode === "mixed" ? types[Math.floor(Math.random() * types.length)] : mode;
       const question = $("questionAngle");
-      if (displayMode === "points") {
-        question.innerHTML = coordinateHTML(current.deg);
-      } else {
-        question.textContent = displayMode === "degrees" ? `${current.deg}°` : current.rad;
-      }
-      beginTimerIfNeeded();
+      if (displayMode === "points") question.innerHTML = coordinateHTML(current.deg);
+      else question.textContent = displayMode === "degrees" ? `${current.deg}°` : current.rad;
+    }
+    function clearPending() {
+      clearTimeout(nextQuestionTimeout); nextQuestionTimeout = null;
+      clearTimeout(flashTimeout); flashTimeout = null;
+    }
+    function showQuestion() {
+      clearPending();
+      if (challengeMode() && (!challengeStarted || challengeFinished)) return;
+      locked = false;
+      refreshHotspots();
+      feedback.textContent = "";
+      feedback.className = "feedback";
+      current = getNextAngle();
+      if (!current) return;
+      displayQuestion();
+      if (!challengeMode()) startClock();
+    }
+    function setFeedback(text, type = "") { feedback.textContent = text; feedback.className = "feedback" + (type ? ` ${type}` : ""); }
+    function finishChallenge() {
+      challengeFinished = true;
+      locked = true;
+      current = null;
+      stopClock();
+      $("pauseBtn").disabled = true;
+      $("startBtn").textContent = "Play Again";
+      $("startBtn").classList.remove("hidden");
+      $("questionAngle").textContent = "🎉 All 16 complete!";
+      $("questionAngle").classList.add("completion");
+      $("questionAngle").style.fontSize = "2rem";
+      setFeedback(`Finished in ${$("timer").textContent} with ${misses} miss${misses === 1 ? '' : 'es'}!`, "correct");
+      $("instructions").textContent = "Challenge complete! All 16 positions are green. Select Play Again to try for a faster time.";
     }
     function handleGuess() {
-      if (locked || paused || !current) return;
-      locked = true;
+      if (locked || paused || !current || (challengeMode() && (!challengeStarted || challengeFinished))) return;
       const guessed = Number(this.getAttribute("data-deg"));
+      if (challengeMode() && solved.has(guessed)) {
+        setFeedback("That location is already completed. Choose another!", "incorrect");
+        return;
+      }
       attempts++;
-      clearHotspots();
       if (guessed === current.deg) {
+        locked = true;
         score++; streak++; bestStreak = Math.max(bestStreak, streak);
-        mark(guessed, "correct");
-        feedback.textContent = "Correct!";
-        feedback.className = "feedback correct";
+        if (challengeMode()) {
+          solved.add(guessed);
+          refreshHotspots();
+          updateScoreboard();
+          if (solved.size === angles.length) { finishChallenge(); return; }
+          setFeedback(`Correct! ${solved.size} of ${angles.length} completed.`, "correct");
+        } else {
+          refreshHotspots();
+          this.classList.add("correct");
+          setFeedback("Correct!", "correct");
+          updateScoreboard();
+        }
+        nextQuestionTimeout = setTimeout(showQuestion, 750);
       } else {
         streak = 0;
-        mark(guessed, "wrong");
-        mark(current.deg, "answer");
-        feedback.textContent = `Not quite. Correct location: ${current.deg}° = ${current.rad} = ${coordinatePlain(current.deg)}`;
-        feedback.className = "feedback incorrect";
+        misses++;
+        refreshHotspots(guessed);
+        if (challengeMode()) {
+          setFeedback("Not quite — try again. Your current question stays active.", "incorrect");
+          clearTimeout(flashTimeout);
+          flashTimeout = setTimeout(() => refreshHotspots(), 500);
+        } else {
+          locked = true;
+          const right = document.querySelector(`.hotspot[data-deg="${current.deg}"]`);
+          if (right) right.classList.add("answer");
+          setFeedback(`Not quite. Correct location: ${current.deg}° = ${current.rad} = ${coordinatePlain(current.deg)}`, "incorrect");
+          nextQuestionTimeout = setTimeout(showQuestion, 1300);
+        }
       }
       updateScoreboard();
-      nextQuestionTimeout = setTimeout(showQuestion, 1300);
     }
     function resetGame() {
-      score = 0; attempts = 0; streak = 0; bestStreak = 0;
-      updateScoreboard();
-      refillBag();
-      resetTimer();
+      clearPending();
+      score = 0; attempts = 0; streak = 0; bestStreak = 0; misses = 0;
+      solved.clear(); refillBag(); current = null; locked = true;
+      challengeStarted = false; challengeFinished = false;
+      $("questionAngle").classList.remove("completion");
+      $("questionAngle").style.fontSize = "";
+      resetTimer(false);
+      refreshHotspots(); updateScoreboard();
+      const challenge = challengeMode();
+      $("challengeProgress").classList.toggle("hidden", !challenge);
+      $("startBtn").classList.toggle("hidden", !challenge);
+      $("startBtn").textContent = "Start Challenge";
+      $("newQuestionBtn").classList.toggle("hidden", challenge);
+      $("resetTimerBtn").classList.toggle("hidden", challenge);
+      $("pauseBtn").disabled = challenge;
+      if (challenge) {
+        $("questionAngle").textContent = "Ready for all 16 angles?";
+        setFeedback("Press Start Challenge to begin the timer.");
+        $("instructions").textContent = "Challenge: 16 unique positions. Correct locations turn green ✓ and stay completed. Misses count, but you retry until correct.";
+      } else {
+        $("instructions").textContent = "Continuous Practice: answer as many as you like. The stopwatch runs while you play.";
+        showQuestion();
+      }
+    }
+    function startChallenge() {
+      resetGame();
+      challengeStarted = true;
+      locked = false;
+      $("startBtn").classList.add("hidden");
+      $("pauseBtn").disabled = false;
+      resetTimer(true);
       showQuestion();
     }
+    $("startBtn").addEventListener("click", startChallenge);
     $("newQuestionBtn").addEventListener("click", showQuestion);
     $("resetBtn").addEventListener("click", resetGame);
-    $("resetTimerBtn").addEventListener("click", resetTimer);
+    $("resetTimerBtn").addEventListener("click", () => resetTimer(true));
     $("pauseBtn").addEventListener("click", togglePause);
-    $("mode").addEventListener("change", showQuestion);
-    createHotspots(); refillBag(); updateScoreboard(); showQuestion();
+    $("mode").addEventListener("change", resetGame);
+    $("gameType").addEventListener("change", resetGame);
+    createHotspots(); resetGame();
   </script>
 </body>
 </html>
