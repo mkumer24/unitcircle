@@ -6,33 +6,49 @@
   <title>Unit Circle Practice Game</title>
   <style>
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #f4f7fb; color: #1f2937; }
-    .app { min-height: 100vh; display: flex; flex-direction: column; padding: 16px; gap: 12px; }
-    .topbar { display: grid; grid-template-columns: 1fr auto auto; gap: 14px; align-items: center; background: white; border-radius: 16px; padding: 16px; box-shadow: 0 6px 20px rgba(0,0,0,.08); }
-    .title h1 { margin: 0 0 6px; font-size: 1.8rem; }
-    .title p { margin: 0; font-size: .95rem; color: #4b5563; }
-    .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
-    .controls label { font-weight: bold; }
-    select, button { font-size: 1rem; padding: 10px 14px; border-radius: 10px; border: 1px solid #cbd5e1; background: white; cursor: pointer; }
-    button:hover, select:hover { background: #f8fafc; }
-    .scoreboard { text-align: right; font-size: 1rem; line-height: 1.5; min-width: 190px; }
-    .timer { font-size: 1.65rem; font-weight: 800; font-variant-numeric: tabular-nums; color: #0f172a; }
-    .timer-buttons { display: flex; gap: 6px; justify-content: flex-end; margin-top: 5px; }
-    .timer-buttons button { padding: 5px 9px; font-size: .85rem; }
-    .question-card { background: white; border-radius: 16px; padding: 18px; box-shadow: 0 6px 20px rgba(0,0,0,.08); text-align: center; }
-    .question-label { font-size: 1rem; color: #4b5563; margin-bottom: 10px; }
-     .question-angle { font-size: 2.4rem; font-weight: bold; color: #0f172a; margin-bottom: 10px; min-height: 1.5em; display: flex; align-items: center; justify-content: center; gap: .08em; }
-    .ordered-pair { display: inline-flex; align-items: center; gap: .12em; white-space: nowrap; }
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #f3f6fb; color: #1f2937; }
+    .app { min-height: 100vh; padding: 14px; display: flex; flex-direction: column; gap: 12px; max-width: 1800px; margin: auto; }
+    .topbar, .board, .sidebar { background: white; border-radius: 16px; box-shadow: 0 5px 18px rgba(16,24,40,.07); }
+    .topbar { padding: 13px 22px; }
+    .title h1 { margin: 0 0 3px; font-size: clamp(1.35rem,2vw,1.9rem); }
+    .title p { margin: 0; color: #64748b; font-size: .95rem; }
+    .game-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 370px); align-items: start; gap: 14px; flex: 1; }
+    .board { display: flex; justify-content: center; align-items: flex-start; padding: 4px 8px; min-height: 0; }
+    .board svg { display: block; width: min(100%, calc(100vh - 115px), 850px); height: auto; max-height: calc(100vh - 115px); flex: none; }
+    .sidebar { padding: 20px; display: flex; flex-direction: column; gap: 19px; }
+    .sidebar-section + .sidebar-section { border-top: 1px solid #e2e8f0; padding-top: 18px; }
+    .section-heading { color: #64748b; font-size: .79rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; margin: 0 0 12px; }
+    .controls { display: grid; grid-template-columns: 1fr; gap: 9px; }
+    .controls label { font-weight: 700; font-size: .91rem; }
+    select, button { font: inherit; min-height: 42px; border: 1px solid #cbd5e1; border-radius: 9px; background: white; color: #0f172a; padding: 8px 11px; cursor: pointer; }
+    select { width: 100%; }
+    button:hover, select:hover { background: #f1f5f9; }
+    .button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 5px; }
+    .button-row .primary { grid-column: 1 / -1; }
+    .primary { background: #1d4ed8; color: white; border-color: #1d4ed8; font-weight: 700; }
+    .primary:hover { background: #1e40af; }
+    .question-card { text-align: center; background: #eff6ff; border: 1px solid #dbeafe; border-radius: 12px; padding: 18px 8px 15px; }
+    .question-label { font-size: .95rem; font-weight: 700; color: #475569; margin-bottom: 10px; }
+    .question-angle { min-height: 80px; display: flex; align-items: center; justify-content: center; gap: .06em; font-size: clamp(1.65rem,2.45vw,2.25rem); font-weight: 800; color: #0f172a; overflow-wrap: anywhere; }
+    .ordered-pair { display: inline-flex; align-items: center; gap: .1em; white-space: nowrap; }
     .frac { display: inline-flex; vertical-align: middle; flex-direction: column; align-items: center; font-size: .75em; line-height: 1.15; }
     .frac .num { border-bottom: 2px solid currentColor; padding: 0 .12em .08em; }
     .frac .den { padding-top: .08em; }
     .question-angle .negative { margin-right: .02em; }
-    @media (max-width: 500px) { .question-angle { font-size: 1.85rem; } }
-    .feedback { min-height: 28px; font-size: 1.1rem; font-weight: bold; }
+    .feedback { min-height: 40px; margin-top: 9px; font-size: .93rem; font-weight: 700; line-height: 1.4; }
     .feedback.correct { color: #15803d; }
     .feedback.incorrect { color: #b91c1c; }
-    .board { flex: 1; display: flex; align-items: center; justify-content: center; background: white; border-radius: 16px; box-shadow: 0 6px 20px rgba(0,0,0,.08); padding: 10px; min-height: 500px; }
-    svg { width: min(90vw, 800px); height: min(90vw, 800px); max-height: 78vh; display: block; }
+    .timer-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .timer { font-size: 2.2rem; font-weight: 800; font-variant-numeric: tabular-nums; color: #0f172a; }
+    .timer-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0 15px; }
+    .timer-buttons button { font-size: .9rem; }
+    .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid #eef2f7; }
+    .stat-row:last-child { border-bottom: 0; }
+    .stat-row strong { font-variant-numeric: tabular-nums; font-size: 1.13rem; }
+    .challenge-progress { color: #1d4ed8; font-weight: 700; }
+    .completion { color: #166534; }
+    .hidden { display: none !important; }
+    select:disabled, button:disabled { opacity: .5; cursor: not-allowed; }
     .axis { stroke: #64748b; stroke-width: 2; }
     .circle-outline { stroke: #0f172a; stroke-width: 3; fill: none; }
     .guide { stroke: #cbd5e1; stroke-width: 1.5; stroke-dasharray: 4 6; }
@@ -40,72 +56,97 @@
     .hotspot:hover { fill: #94a3b8; }
     .hotspot.correct { fill: #22c55e; stroke: #15803d; }
     .hotspot.wrong { fill: #ef4444; stroke: #b91c1c; }
-     .hotspot.answer { fill: #60a5fa; stroke: #1d4ed8; }
+    .hotspot.answer { fill: #60a5fa; stroke: #1d4ed8; }
     .hotspot.done { fill: #16a34a; stroke: #166534; }
     .done-check { pointer-events: none; font-size: 20px; font-weight: 900; fill: white; text-anchor: middle; dominant-baseline: central; }
     .hotspot.done:hover { fill: #16a34a; }
-    .primary { background: #1d4ed8; color: white; border-color: #1d4ed8; font-weight: bold; }
-    .primary:hover { background: #1e40af; }
-    .challenge-progress { font-size: 1rem; font-weight: 700; margin-top: 7px; color: #1e40af; }
-    .completion { font-weight: 800; color: #166534; font-size: 1.3rem; }
-    .hidden { display: none !important; }
-    select:disabled, button:disabled { opacity: .5; cursor: not-allowed; }
-    .game-label { font-weight: 700; }
-    
     .center-dot { fill: #0f172a; }
-    .small-note { text-align: center; color: #6b7280; font-size: .95rem; margin-top: -2px; }
-    @media (max-width: 850px) { .topbar { grid-template-columns: 1fr; text-align: center; } .scoreboard { text-align: center; } .timer-buttons { justify-content: center; } }
+    .small-note { margin: 0; padding: 0 4px 8px; text-align: center; font-size: .9rem; color: #64748b; }
+    @media (max-width: 920px) {
+      .game-layout { grid-template-columns: minmax(0,1fr) 305px; }
+      .sidebar { padding: 14px; gap: 14px; }
+      .board svg { width: 100%; max-height: unset; }
+      .question-angle { font-size: 1.7rem; }
+    }
+    @media (max-width: 700px) {
+      .app { padding: 8px; }
+      .game-layout { grid-template-columns: 1fr; }
+      .board { order: 1; }
+      .sidebar { order: 2; }
+      .board svg { width: min(100%, 620px); }
+      .controls { grid-template-columns: 1fr 1fr; }
+      .controls label { align-self: end; }
+      .button-row { grid-column: 1 / -1; }
+      .question-angle { font-size: 2rem; }
+    }
   </style>
 </head>
 <body>
   <div class="app">
-    <div class="topbar">
+    <header class="topbar">
       <div class="title">
         <h1>Unit Circle Practice Game</h1>
         <p>Find the angle or ordered pair on the unit circle.</p>
       </div>
-      <div class="controls">
-        <label for="gameType" class="game-label">Game:</label>
-        <select id="gameType">
-          <option value="continuous">Continuous Practice</option>
-          <option value="challenge">Game Mode Challenge</option>
-        </select>
-        <label for="mode">Questions:</label>
-        <select id="mode">
-          <option value="mixed">Mixed</option>
-          <option value="degrees">Degrees Only</option>
-          <option value="radians">Radians Only</option>
-          <option value="points">Coordinates Only</option>
-        </select>
-        <button id="startBtn" class="primary hidden">Start Challenge</button>
-        <button id="newQuestionBtn">New Question</button>
-        <button id="resetBtn">Reset Game</button>
+    </header>
+    <main class="game-layout">
+      <div class="board">
+        <svg id="unitCircle" viewBox="0 0 700 700" aria-label="Unit circle game board">
+          <line class="axis" x1="80" y1="350" x2="620" y2="350"></line>
+          <line class="axis" x1="350" y1="80" x2="350" y2="620"></line>
+          <line class="guide" x1="159.1" y1="159.1" x2="540.9" y2="540.9"></line>
+          <line class="guide" x1="159.1" y1="540.9" x2="540.9" y2="159.1"></line>
+          <circle class="circle-outline" cx="350" cy="350" r="240"></circle>
+          <circle class="center-dot" cx="350" cy="350" r="5"></circle>
+          <g id="hotspots"></g>
+        </svg>
       </div>
-      <div class="scoreboard">
-        <div><strong>Time:</strong> <span class="timer" id="timer">00:00</span></div>
-        <div class="timer-buttons"><button id="pauseBtn">Pause</button><button id="resetTimerBtn">Reset Timer</button></div>
-        <div><strong>Score:</strong> <span id="score">0</span> / <span id="attempts">0</span></div>
-        <div><strong>Streak:</strong> <span id="streak">0</span></div>
-        <div><strong>Best Streak:</strong> <span id="bestStreak">0</span></div>
-        <div id="challengeProgress" class="challenge-progress hidden">Completed: <span id="completed">0</span> / 16 · Misses: <span id="misses">0</span></div>
-      </div>
-    </div>
-    <div class="question-card">
-      <div class="question-label">Click the matching location:</div>
-      <div class="question-angle" id="questionAngle">π/4</div>
-      <div class="feedback" id="feedback" aria-live="polite"></div>
-    </div>
-    <div class="board">
-      <svg id="unitCircle" viewBox="0 0 700 700" aria-label="Unit circle game board">
-        <line class="axis" x1="80" y1="350" x2="620" y2="350"></line>
-        <line class="axis" x1="350" y1="80" x2="350" y2="620"></line>
-        <line class="guide" x1="159.1" y1="159.1" x2="540.9" y2="540.9"></line>
-        <line class="guide" x1="159.1" y1="540.9" x2="540.9" y2="159.1"></line>
-        <circle class="circle-outline" cx="350" cy="350" r="240"></circle>
-        <circle class="center-dot" cx="350" cy="350" r="5"></circle>
-        <g id="hotspots"></g>
-      </svg>
-    </div>
+      <aside class="sidebar" aria-label="Game controls, question, and statistics">
+        <section class="sidebar-section">
+          <h2 class="section-heading">Game settings</h2>
+          <div class="controls">
+            <label for="gameType">Game</label>
+            <select id="gameType">
+              <option value="continuous">Continuous Practice</option>
+              <option value="challenge">16-Angle Challenge</option>
+            </select>
+            <label for="mode">Questions</label>
+            <select id="mode">
+              <option value="mixed">Mixed</option>
+              <option value="degrees">Degrees Only</option>
+              <option value="radians">Radians Only</option>
+              <option value="points">Coordinates Only</option>
+            </select>
+            <div class="button-row">
+              <button id="startBtn" class="primary hidden">Start Challenge</button>
+              <button id="newQuestionBtn">New Question</button>
+              <button id="resetBtn">Reset Game</button>
+            </div>
+          </div>
+        </section>
+        <section class="sidebar-section">
+          <h2 class="section-heading">Current question</h2>
+          <div class="question-card">
+            <div class="question-label">Click the matching location:</div>
+            <div class="question-angle" id="questionAngle">π/4</div>
+            <div class="feedback" id="feedback" aria-live="polite"></div>
+          </div>
+        </section>
+        <section class="sidebar-section">
+          <h2 class="section-heading">Time &amp; stats</h2>
+          <div class="timer-row"><span>Elapsed time</span><span class="timer" id="timer">00:00</span></div>
+          <div class="timer-buttons">
+            <button id="pauseBtn">Pause</button>
+            <button id="resetTimerBtn">Reset Timer</button>
+          </div>
+          <div class="stat-row"><span>Score</span><strong><span id="score">0</span> / <span id="attempts">0</span></strong></div>
+          <div class="stat-row"><span>Current streak</span><strong id="streak">0</strong></div>
+          <div class="stat-row"><span>Best streak</span><strong id="bestStreak">0</strong></div>
+          <div class="stat-row"><span>Misses</span><strong id="misses">0</strong></div>
+          <div id="challengeProgress" class="stat-row challenge-progress hidden"><span>Completed</span><strong><span id="completed">0</span> / 16</strong></div>
+        </section>
+      </aside>
+    </main>
     <div class="small-note" id="instructions">Continuous Practice: answer as many as you like. The stopwatch runs while you play.</div>
   </div>
   <script>
