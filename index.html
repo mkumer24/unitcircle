@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Unit Circle Practice Game</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #f4f7fb; color: #1f2937; }
+    .app { min-height: 100vh; display: flex; flex-direction: column; padding: 16px; gap: 12px; }
+    .topbar { display: grid; grid-template-columns: 1fr auto auto; gap: 14px; align-items: center; background: white; border-radius: 16px; padding: 16px; box-shadow: 0 6px 20px rgba(0,0,0,.08); }
+    .title h1 { margin: 0 0 6px; font-size: 1.8rem; }
+    .title p { margin: 0; font-size: .95rem; color: #4b5563; }
+    .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .controls label { font-weight: bold; }
+    select, button { font-size: 1rem; padding: 10px 14px; border-radius: 10px; border: 1px solid #cbd5e1; background: white; cursor: pointer; }
+    button:hover, select:hover { background: #f8fafc; }
+    .scoreboard { text-align: right; font-size: 1rem; line-height: 1.5; min-width: 190px; }
+    .timer { font-size: 1.65rem; font-weight: 800; font-variant-numeric: tabular-nums; color: #0f172a; }
+    .timer-buttons { display: flex; gap: 6px; justify-content: flex-end; margin-top: 5px; }
+    .timer-buttons button { padding: 5px 9px; font-size: .85rem; }
+    .question-card { background: white; border-radius: 16px; padding: 18px; box-shadow: 0 6px 20px rgba(0,0,0,.08); text-align: center; }
+    .question-label { font-size: 1rem; color: #4b5563; margin-bottom: 10px; }
+     .question-angle { font-size: 2.4rem; font-weight: bold; color: #0f172a; margin-bottom: 10px; min-height: 1.5em; display: flex; align-items: center; justify-content: center; gap: .08em; }
+    .ordered-pair { display: inline-flex; align-items: center; gap: .12em; white-space: nowrap; }
+    .frac { display: inline-flex; vertical-align: middle; flex-direction: column; align-items: center; font-size: .75em; line-height: 1.15; }
+    .frac .num { border-bottom: 2px solid currentColor; padding: 0 .12em .08em; }
+    .frac .den { padding-top: .08em; }
+    .question-angle .negative { margin-right: .02em; }
+    @media (max-width: 500px) { .question-angle { font-size: 1.85rem; } }
+    .feedback { min-height: 28px; font-size: 1.1rem; font-weight: bold; }
+    .feedback.correct { color: #15803d; }
+    .feedback.incorrect { color: #b91c1c; }
+    .board { flex: 1; display: flex; align-items: center; justify-content: center; background: white; border-radius: 16px; box-shadow: 0 6px 20px rgba(0,0,0,.08); padding: 10px; min-height: 500px; }
+    svg { width: min(90vw, 800px); height: min(90vw, 800px); max-height: 78vh; display: block; }
+    .axis { stroke: #64748b; stroke-width: 2; }
+    .circle-outline { stroke: #0f172a; stroke-width: 3; fill: none; }
+    .guide { stroke: #cbd5e1; stroke-width: 1.5; stroke-dasharray: 4 6; }
+    .hotspot { fill: #cbd5e1; stroke: #475569; stroke-width: 2; cursor: pointer; transition: .15s ease; }
+    .hotspot:hover { fill: #94a3b8; }
+    .hotspot.correct { fill: #22c55e; stroke: #15803d; }
+    .hotspot.wrong { fill: #ef4444; stroke: #b91c1c; }
+    .hotspot.answer { fill: #60a5fa; stroke: #1d4ed8; }
+    .center-dot { fill: #0f172a; }
+    .small-note { text-align: center; color: #6b7280; font-size: .95rem; margin-top: -2px; }
+    @media (max-width: 850px) { .topbar { grid-template-columns: 1fr; text-align: center; } .scoreboard { text-align: center; } .timer-buttons { justify-content: center; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div class="title">
+        <h1>Unit Circle Practice Game</h1>
+        <p>Find the angle or ordered pair on the unit circle.</p>
+      </div>
+      <div class="controls">
+        <label for="mode">Mode:</label>
+        <select id="mode">
+          <option value="mixed">Mixed</option>
+          <option value="degrees">Degrees Only</option>
+          <option value="radians">Radians Only</option>
+          <option value="points">Coordinates Only</option>
+        </select>
+        <button id="newQuestionBtn">New Question</button>
+        <button id="resetBtn">Reset Game</button>
+      </div>
+      <div class="scoreboard">
+        <div><strong>Time:</strong> <span class="timer" id="timer">00:00</span></div>
+        <div class="timer-buttons"><button id="pauseBtn">Pause</button><button id="resetTimerBtn">Reset Timer</button></div>
+        <div><strong>Score:</strong> <span id="score">0</span> / <span id="attempts">0</span></div>
+        <div><strong>Streak:</strong> <span id="streak">0</span></div>
+        <div><strong>Best Streak:</strong> <span id="bestStreak">0</span></div>
+      </div>
+    </div>
+    <div class="question-card">
+      <div class="question-label">Click the matching location:</div>
+      <div class="question-angle" id="questionAngle">π/4</div>
+      <div class="feedback" id="feedback" aria-live="polite"></div>
+    </div>
+    <div class="board">
+      <svg id="unitCircle" viewBox="0 0 700 700" aria-label="Unit circle game board">
+        <line class="axis" x1="80" y1="350" x2="620" y2="350"></line>
+        <line class="axis" x1="350" y1="80" x2="350" y2="620"></line>
+        <line class="guide" x1="159.1" y1="159.1" x2="540.9" y2="540.9"></line>
+        <line class="guide" x1="159.1" y1="540.9" x2="540.9" y2="159.1"></line>
+        <circle class="circle-outline" cx="350" cy="350" r="240"></circle>
+        <circle class="center-dot" cx="350" cy="350" r="5"></circle>
+        <g id="hotspots"></g>
+      </svg>
+    </div>
+    <div class="small-note">The stopwatch starts on your first angle and runs until paused or reset.</div>
+  </div>
+  <script>
+    const angles = [
+      { deg: 0, rad: "0" }, { deg: 30, rad: "π/6" }, { deg: 45, rad: "π/4" },
+      { deg: 60, rad: "π/3" }, { deg: 90, rad: "π/2" }, { deg: 120, rad: "2π/3" },
+      { deg: 135, rad: "3π/4" }, { deg: 150, rad: "5π/6" }, { deg: 180, rad: "π" },
+      { deg: 210, rad: "7π/6" }, { deg: 225, rad: "5π/4" }, { deg: 240, rad: "4π/3" },
+      { deg: 270, rad: "3π/2" }, { deg: 300, rad: "5π/3" }, { deg: 315, rad: "7π/4" },
+      { deg: 330, rad: "11π/6" }
+    ];
+    // Exact unit-circle coordinates, indexed by angle in degrees.
+    // For 30°/60° use √3/2 and 1/2; for 45° use √2/2.
+    const coords = {
+      0: ["1", "0"], 30: ["sqrt3half", "half"],
+      45: ["sqrt2half", "sqrt2half"], 60: ["half", "sqrt3half"],
+      90: ["0", "1"], 120: ["-half", "sqrt3half"],
+      135: ["-sqrt2half", "sqrt2half"], 150: ["-sqrt3half", "half"],
+      180: ["-1", "0"], 210: ["-sqrt3half", "-half"],
+      225: ["-sqrt2half", "-sqrt2half"], 240: ["-half", "-sqrt3half"],
+      270: ["0", "-1"], 300: ["half", "-sqrt3half"],
+      315: ["sqrt2half", "-sqrt2half"], 330: ["sqrt3half", "-half"]
+    };
+    function coordinateComponent(value) {
+      const negative = value.startsWith("-");
+      const key = negative ? value.slice(1) : value;
+      const fractions = { half: "1", sqrt2half: "√2", sqrt3half: "√3" };
+      const sign = negative ? '<span class="negative">−</span>' : '';
+      if (fractions[key]) {
+        return `${sign}<span class="frac"><span class="num">${fractions[key]}</span><span class="den">2</span></span>`;
+      }
+      return `${sign}${key}`;
+    }
+    function coordinateHTML(deg) {
+      const [x, y] = coords[deg];
+      return `<span class="ordered-pair">(${coordinateComponent(x)}, ${coordinateComponent(y)})</span>`;
+    }
+    function coordinatePlain(deg) {
+      const map = { half: "1/2", sqrt2half: "√2/2", sqrt3half: "√3/2" };
+      return `(${coords[deg].map(v => (v.startsWith('-') ? '−' : '') + (map[v.replace('-', '')] || v.replace('-', ''))).join(', ')})`;
+    }
+    const $ = id => document.getElementById(id);
+    const hotspotsGroup = $("hotspots"), feedback = $("feedback");
+    let current = null, score = 0, attempts = 0, streak = 0, bestStreak = 0;
+    let locked = false, bag = [], nextQuestionTimeout = null;
+    // Stopwatch: elapsed time is based on performance.now() rather than interval ticks.
+    let elapsedBeforePause = 0, startedAt = null, paused = false;
+    function elapsedMs() { return elapsedBeforePause + (startedAt === null ? 0 : performance.now() - startedAt); }
+    function updateTimer() {
+      const totalSeconds = Math.floor(elapsedMs() / 1000);
+      const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+      const seconds = String(totalSeconds % 60).padStart(2, "0");
+      $("timer").textContent = `${minutes}:${seconds}`;
+    }
+    function beginTimerIfNeeded() {
+      if (!paused && startedAt === null) startedAt = performance.now();
+    }
+    function togglePause() {
+      if (!paused) {
+        elapsedBeforePause = elapsedMs();
+        startedAt = null;
+        paused = true;
+        $("pauseBtn").textContent = "Resume";
+      } else {
+        paused = false;
+        startedAt = performance.now();
+        $("pauseBtn").textContent = "Pause";
+      }
+      updateTimer();
+    }
+    function resetTimer() {
+      elapsedBeforePause = 0;
+      startedAt = performance.now();
+      paused = false;
+      $("pauseBtn").textContent = "Pause";
+      updateTimer();
+    }
+    setInterval(updateTimer, 100);
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+    function refillBag() { bag = shuffle([...angles]); }
+    function getNextAngle() { if (!bag.length) refillBag(); return bag.pop(); }
+    function polarToXY(deg) {
+      const rad = deg * Math.PI / 180;
+      return { x: 350 + 240 * Math.cos(rad), y: 350 - 240 * Math.sin(rad) };
+    }
+    function createHotspots() {
+      hotspotsGroup.innerHTML = "";
+      angles.forEach(item => {
+        const p = polarToXY(item.deg);
+        const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        dot.setAttribute("cx", p.x);
+        dot.setAttribute("cy", p.y);
+        dot.setAttribute("r", 15);
+        dot.setAttribute("class", "hotspot");
+        dot.setAttribute("data-deg", item.deg);
+        dot.setAttribute("tabindex", "0");
+        dot.setAttribute("role", "button");
+        dot.setAttribute("aria-label", `Angle location ${item.deg} degrees`);
+        dot.addEventListener("click", handleGuess);
+        dot.addEventListener("keydown", event => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            handleGuess.call(dot);
+          }
+        });
+        hotspotsGroup.appendChild(dot);
+      });
+    }
+    function clearHotspots() {
+      document.querySelectorAll(".hotspot").forEach(h => h.classList.remove("correct", "wrong", "answer"));
+    }
+    function mark(deg, className) {
+      const h = document.querySelector(`.hotspot[data-deg="${deg}"]`);
+      if (h) h.classList.add(className);
+    }
+    function updateScoreboard() {
+      $("score").textContent = score;
+      $("attempts").textContent = attempts;
+      $("streak").textContent = streak;
+      $("bestStreak").textContent = bestStreak;
+    }
+    function showQuestion() {
+      clearTimeout(nextQuestionTimeout);
+      nextQuestionTimeout = null;
+      locked = false;
+      clearHotspots();
+      feedback.textContent = "";
+      feedback.className = "feedback";
+      current = getNextAngle();
+      const mode = $("mode").value;
+      const types = ["degrees", "radians", "points"];
+      const displayMode = mode === "mixed" ? types[Math.floor(Math.random() * types.length)] : mode;
+      const question = $("questionAngle");
+      if (displayMode === "points") {
+        question.innerHTML = coordinateHTML(current.deg);
+      } else {
+        question.textContent = displayMode === "degrees" ? `${current.deg}°` : current.rad;
+      }
+      beginTimerIfNeeded();
+    }
+    function handleGuess() {
+      if (locked || paused || !current) return;
+      locked = true;
+      const guessed = Number(this.getAttribute("data-deg"));
+      attempts++;
+      clearHotspots();
+      if (guessed === current.deg) {
+        score++; streak++; bestStreak = Math.max(bestStreak, streak);
+        mark(guessed, "correct");
+        feedback.textContent = "Correct!";
+        feedback.className = "feedback correct";
+      } else {
+        streak = 0;
+        mark(guessed, "wrong");
+        mark(current.deg, "answer");
+        feedback.textContent = `Not quite. Correct location: ${current.deg}° = ${current.rad} = ${coordinatePlain(current.deg)}`;
+        feedback.className = "feedback incorrect";
+      }
+      updateScoreboard();
+      nextQuestionTimeout = setTimeout(showQuestion, 1300);
+    }
+    function resetGame() {
+      score = 0; attempts = 0; streak = 0; bestStreak = 0;
+      updateScoreboard();
+      refillBag();
+      resetTimer();
+      showQuestion();
+    }
+    $("newQuestionBtn").addEventListener("click", showQuestion);
+    $("resetBtn").addEventListener("click", resetGame);
+    $("resetTimerBtn").addEventListener("click", resetTimer);
+    $("pauseBtn").addEventListener("click", togglePause);
+    $("mode").addEventListener("change", showQuestion);
+    createHotspots(); refillBag(); updateScoreboard(); showQuestion();
+  </script>
+</body>
+</html>
