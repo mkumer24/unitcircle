@@ -1,418 +1,102 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Unit Circle Practice Game</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #f3f6fb; color: #1f2937; }
-    .app { min-height: 100vh; padding: 14px; display: flex; flex-direction: column; gap: 12px; max-width: 1800px; margin: auto; }
-    .topbar, .board, .sidebar { background: white; border-radius: 16px; box-shadow: 0 5px 18px rgba(16,24,40,.07); }
-    .topbar { padding: 13px 22px; }
-    .title h1 { margin: 0 0 3px; font-size: clamp(1.35rem,2vw,1.9rem); }
-    .title p { margin: 0; color: #64748b; font-size: .95rem; }
-    .game-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 370px); align-items: start; gap: 14px; flex: 1; }
-    .board { display: flex; justify-content: center; align-items: flex-start; padding: 4px 8px; min-height: 0; }
-    .board svg { display: block; width: min(100%, calc(100vh - 115px), 850px); height: auto; max-height: calc(100vh - 115px); flex: none; }
-    .sidebar { padding: 20px; display: flex; flex-direction: column; gap: 19px; }
-    .sidebar-section + .sidebar-section { border-top: 1px solid #e2e8f0; padding-top: 18px; }
-    .section-heading { color: #64748b; font-size: .79rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; margin: 0 0 12px; }
-    .controls { display: grid; grid-template-columns: 1fr; gap: 9px; }
-    .controls label { font-weight: 700; font-size: .91rem; }
-    select, button { font: inherit; min-height: 42px; border: 1px solid #cbd5e1; border-radius: 9px; background: white; color: #0f172a; padding: 8px 11px; cursor: pointer; }
-    select { width: 100%; }
-    button:hover, select:hover { background: #f1f5f9; }
-    .button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 5px; }
-    .button-row .primary { grid-column: 1 / -1; }
-    .primary { background: #1d4ed8; color: white; border-color: #1d4ed8; font-weight: 700; }
-    .primary:hover { background: #1e40af; }
-    .question-card { text-align: center; background: #eff6ff; border: 1px solid #dbeafe; border-radius: 12px; padding: 18px 8px 15px; }
-    .question-label { font-size: .95rem; font-weight: 700; color: #475569; margin-bottom: 10px; }
-    .question-angle { min-height: 80px; display: flex; align-items: center; justify-content: center; gap: .06em; font-size: clamp(1.65rem,2.45vw,2.25rem); font-weight: 800; color: #0f172a; overflow-wrap: anywhere; }
-    .ordered-pair { display: inline-flex; align-items: center; gap: .1em; white-space: nowrap; }
-    .frac { display: inline-flex; vertical-align: middle; flex-direction: column; align-items: center; font-size: .75em; line-height: 1.15; }
-    .frac .num { border-bottom: 2px solid currentColor; padding: 0 .12em .08em; }
-    .frac .den { padding-top: .08em; }
-    .question-angle .negative { margin-right: .02em; }
-    .feedback { min-height: 40px; margin-top: 9px; font-size: .93rem; font-weight: 700; line-height: 1.4; }
-    .feedback.correct { color: #15803d; }
-    .feedback.incorrect { color: #b91c1c; }
-    .timer-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-    .timer { font-size: 2.2rem; font-weight: 800; font-variant-numeric: tabular-nums; color: #0f172a; }
-    .timer-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0 15px; }
-    .timer-buttons button { font-size: .9rem; }
-    .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid #eef2f7; }
-    .stat-row:last-child { border-bottom: 0; }
-    .stat-row strong { font-variant-numeric: tabular-nums; font-size: 1.13rem; }
-    .challenge-progress { color: #1d4ed8; font-weight: 700; }
-    .completion { color: #166534; }
-    .hidden { display: none !important; }
-    select:disabled, button:disabled { opacity: .5; cursor: not-allowed; }
-    .axis { stroke: #64748b; stroke-width: 2; }
-    .circle-outline { stroke: #0f172a; stroke-width: 3; fill: none; }
-    .guide { stroke: #cbd5e1; stroke-width: 1.5; stroke-dasharray: 4 6; }
-    .hotspot { fill: #cbd5e1; stroke: #475569; stroke-width: 2; cursor: pointer; transition: .15s ease; }
-    .hotspot:hover { fill: #94a3b8; }
-    .hotspot.correct { fill: #22c55e; stroke: #15803d; }
-    .hotspot.wrong { fill: #ef4444; stroke: #b91c1c; }
-    .hotspot.answer { fill: #60a5fa; stroke: #1d4ed8; }
-    .hotspot.done { fill: #16a34a; stroke: #166534; }
-    .done-check { pointer-events: none; font-size: 20px; font-weight: 900; fill: white; text-anchor: middle; dominant-baseline: central; }
-    .hotspot.done:hover { fill: #16a34a; }
-    .center-dot { fill: #0f172a; }
-    .small-note { margin: 0; padding: 0 4px 8px; text-align: center; font-size: .9rem; color: #64748b; }
-    @media (max-width: 920px) {
-      .game-layout { grid-template-columns: minmax(0,1fr) 305px; }
-      .sidebar { padding: 14px; gap: 14px; }
-      .board svg { width: 100%; max-height: unset; }
-      .question-angle { font-size: 1.7rem; }
-    }
-    @media (max-width: 700px) {
-      .app { padding: 8px; }
-      .game-layout { grid-template-columns: 1fr; }
-      .board { order: 1; }
-      .sidebar { order: 2; }
-      .board svg { width: min(100%, 620px); }
-      .controls { grid-template-columns: 1fr 1fr; }
-      .controls label { align-self: end; }
-      .button-row { grid-column: 1 / -1; }
-      .question-angle { font-size: 2rem; }
-    }
-  </style>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unit Circle • Trig Values Challenge</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:#18253b;background:#eff3f8}*{box-sizing:border-box}body{margin:0}.wrap{max-width:1600px;margin:auto;padding:12px}.head{background:#fff;border-radius:15px;padding:13px 20px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}.head h1{font-size:clamp(1.25rem,2vw,1.75rem);margin:0}.head p{color:#64748b;margin:3px 0 0;font-size:.92rem}.layout{display:grid;grid-template-columns:minmax(0,1fr) 365px;gap:12px;align-items:start}.board,.sidebar{background:#fff;border-radius:15px;box-shadow:0 4px 18px #0e28420a}.board{padding:5px 12px 12px;display:flex;flex-direction:column;align-items:center}.board svg{width:min(100%,calc(100vh - 134px),790px);display:block;max-height:calc(100vh - 134px)}.board-note{font-size:.83rem;color:#64748b;text-align:center;margin:0 0 4px}.sidebar{padding:17px;display:flex;flex-direction:column;gap:15px}.section{border-bottom:1px solid #e4eaf2;padding-bottom:15px}.section:last-child{border:0;padding-bottom:0}.section h2{font-size:.77rem;letter-spacing:.08em;color:#66768b;text-transform:uppercase;margin:0 0 11px}.two{display:grid;grid-template-columns:1fr 1fr;gap:9px}label{display:block;font-size:.83rem;font-weight:650;margin:0 0 5px}select,button{font:inherit;border:1px solid #c9d4e3;background:#fff;color:#243249;border-radius:9px;min-height:40px;padding:8px 9px}select{width:100%;cursor:pointer}button{cursor:pointer;font-weight:650}button:hover:not(:disabled){background:#eaf2ff}button:disabled{opacity:.45;cursor:default}.primary{background:#1d4ed8;border-color:#1d4ed8;color:#fff}.primary:hover:not(:disabled){background:#1e40af}.buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}.buttons .wide{grid-column:span 2}.prompt{background:#edf4ff;border:1px solid #dbe7fb;border-radius:12px;text-align:center;padding:16px 10px}.kicker{font-size:.88rem;color:#64748b;font-weight:650}.expr{font-size:clamp(1.8rem,3.5vw,2.5rem);font-weight:750;line-height:1.4;margin:8px 0}.choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}.choice{background:#fff;border:2px solid #d3dfef;border-radius:10px;font-size:1.55rem;min-height:65px;display:flex;justify-content:center;align-items:center;padding:8px 3px}.choice:hover:not(:disabled){border-color:#5885d5;background:#f3f8ff}.choice.right,.choice.right:disabled{background:#dff8e9;border-color:#16a34a;color:#166534;opacity:1}.choice.wrong,.choice.wrong:disabled{background:#ffe7e7;border-color:#dc2626;color:#991b1b;opacity:1}.feedback{font-weight:650;font-size:.91rem;min-height:23px;margin-top:10px;color:#3b4a60}.feedback.ok{color:#15803d}.feedback.no{color:#b91c1c}.timer{font-size:2.3rem;font-weight:800;letter-spacing:.02em;font-variant-numeric:tabular-nums}.statsline{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #eef1f5;padding:7px 0;font-size:.94rem}.statsline b{font-variant-numeric:tabular-nums}.progress{height:10px;background:#e4eaf2;border-radius:99px;overflow:hidden;margin-top:9px}.fill{height:100%;background:#16a34a;width:0%;transition:width .25s}.ref{background:#f7f9fd;padding:10px;border-radius:10px;min-height:62px;font-size:1rem;text-align:center}.frac{display:inline-flex;flex-direction:column;vertical-align:middle;align-items:center;justify-content:center;line-height:1.1;font-size:.85em;margin:0 .07em;white-space:nowrap}.frac>span:first-child{border-bottom:2px solid currentColor;padding:0 .22em .13em;min-width:1.25em}.frac>span:last-child{padding:.13em .18em 0}.coord{font-size:1.2rem;font-weight:700}.expr{display:flex;align-items:center;justify-content:center;gap:.03em;min-height:74px;white-space:nowrap}.expr .frac{font-size:.78em}.expr .paren{font-size:1.17em;font-weight:450}.expr .function-name{font-family:Georgia,'Times New Roman',serif;font-style:normal;font-weight:600;margin-right:.09em}.choice .frac{font-size:.92em}.choice{font-family:Georgia,'Times New Roman',serif;font-weight:600}.ref .frac{font-size:.88em}.circle-outline{stroke:#152944;stroke-width:2.8;fill:none}.axis{stroke:#9baac0;stroke-width:1.8}.tick{stroke:#ced9e7;stroke-width:1}.dot{fill:#e6edf7;stroke:#48607e;stroke-width:2.5;cursor:pointer;transition:fill .12s}.dot:hover,.dot:focus{fill:#bfdbfe;stroke:#2563eb;outline:none}.dot.selected{fill:#2563eb;stroke:#1d4ed8}.ray{stroke:#2563eb;stroke-width:3.5;stroke-dasharray:7 6}.axislabel{font-size:17px;fill:#72819a}.pointLabel{font-size:13px;fill:#64748b;pointer-events:none}.question-tag{color:#1d4ed8;font-size:.85rem;font-weight:750}.mute{color:#64748b;font-size:.83rem}.hide{display:none!important}.overlay{position:absolute;inset:0;background:#ffffffdc;border-radius:14px;display:flex;align-items:center;justify-content:center;text-align:center;padding:25px;z-index:2}.overlay h3{font-size:1.45rem;margin:0 0 8px}.overlay p{line-height:1.5}.prompt-wrap{position:relative}.finish{color:#166534}.note{color:#64748b;font-size:.83rem;text-align:center;margin:10px 0 0}@media(max-width:950px){.layout{grid-template-columns:minmax(0,1fr) 320px}.sidebar{padding:12px}.board svg{width:100%;max-height:none}}@media(max-width:720px){.layout{grid-template-columns:1fr}.board svg{width:min(100%,590px)}.head{padding:12px}.choice{min-height:60px}.board-note{margin-top:5px}}
+</style>
 </head>
 <body>
-  <div class="app">
-    <header class="topbar">
-      <div class="title">
-        <h1>Unit Circle Practice Game</h1>
-        <p>Find the angle or ordered pair on the unit circle.</p>
-      </div>
-    </header>
-    <main class="game-layout">
-      <div class="board">
-        <svg id="unitCircle" viewBox="0 0 700 700" aria-label="Unit circle game board">
-          <line class="axis" x1="80" y1="350" x2="620" y2="350"></line>
-          <line class="axis" x1="350" y1="80" x2="350" y2="620"></line>
-          <line class="guide" x1="159.1" y1="159.1" x2="540.9" y2="540.9"></line>
-          <line class="guide" x1="159.1" y1="540.9" x2="540.9" y2="159.1"></line>
-          <circle class="circle-outline" cx="350" cy="350" r="240"></circle>
-          <circle class="center-dot" cx="350" cy="350" r="5"></circle>
-          <g id="hotspots"></g>
-        </svg>
-      </div>
-      <aside class="sidebar" aria-label="Game controls, question, and statistics">
-        <section class="sidebar-section">
-          <h2 class="section-heading">Game settings</h2>
-          <div class="controls">
-            <label for="gameType">Game</label>
-            <select id="gameType">
-              <option value="continuous">Continuous Practice</option>
-              <option value="challenge">Game Mode</option>
-            </select>
-            <label for="mode">Questions</label>
-            <select id="mode">
-              <option value="mixed">Mixed</option>
-              <option value="degrees">Degrees Only</option>
-              <option value="radians">Radians Only</option>
-              <option value="points">Coordinates Only</option>
-            </select>
-            <div class="button-row">
-              <button id="startBtn" class="primary hidden">Start Challenge</button>
-              <button id="newQuestionBtn">New Question</button>
-              <button id="resetBtn">Reset Game</button>
-            </div>
-          </div>
-        </section>
-        <section class="sidebar-section">
-          <h2 class="section-heading">Current question</h2>
-          <div class="question-card">
-            <div class="question-label">Click the matching location:</div>
-            <div class="question-angle" id="questionAngle">π/4</div>
-            <div class="feedback" id="feedback" aria-live="polite"></div>
-          </div>
-        </section>
-        <section class="sidebar-section">
-          <h2 class="section-heading">Time &amp; stats</h2>
-          <div class="timer-row"><span>Elapsed time</span><span class="timer" id="timer">00:00</span></div>
-          <div class="timer-buttons">
-            <button id="pauseBtn">Pause</button>
-            <button id="resetTimerBtn">Reset Timer</button>
-          </div>
-          <div class="stat-row"><span>Score</span><strong><span id="score">0</span> / <span id="attempts">0</span></strong></div>
-          <div class="stat-row"><span>Current streak</span><strong id="streak">0</strong></div>
-          <div class="stat-row"><span>Best streak</span><strong id="bestStreak">0</strong></div>
-          <div class="stat-row"><span>Misses</span><strong id="misses">0</strong></div>
-          <div id="challengeProgress" class="stat-row challenge-progress hidden"><span>Completed</span><strong><span id="completed">0</span> / 16</strong></div>
-        </section>
-      </aside>
-    </main>
-    <div class="small-note" id="instructions">Continuous Practice: answer as many as you like. The stopwatch runs while you play.</div>
-  </div>
-  <script>
-    const angles = [
-      { deg: 0, rad: "0" }, { deg: 30, rad: "π/6" }, { deg: 45, rad: "π/4" },
-      { deg: 60, rad: "π/3" }, { deg: 90, rad: "π/2" }, { deg: 120, rad: "2π/3" },
-      { deg: 135, rad: "3π/4" }, { deg: 150, rad: "5π/6" }, { deg: 180, rad: "π" },
-      { deg: 210, rad: "7π/6" }, { deg: 225, rad: "5π/4" }, { deg: 240, rad: "4π/3" },
-      { deg: 270, rad: "3π/2" }, { deg: 300, rad: "5π/3" }, { deg: 315, rad: "7π/4" },
-      { deg: 330, rad: "11π/6" }
-    ];
-    // Exact unit-circle coordinates, indexed by angle in degrees.
-    // For 30°/60° use √3/2 and 1/2; for 45° use √2/2.
-    const coords = {
-      0: ["1", "0"], 30: ["sqrt3half", "half"],
-      45: ["sqrt2half", "sqrt2half"], 60: ["half", "sqrt3half"],
-      90: ["0", "1"], 120: ["-half", "sqrt3half"],
-      135: ["-sqrt2half", "sqrt2half"], 150: ["-sqrt3half", "half"],
-      180: ["-1", "0"], 210: ["-sqrt3half", "-half"],
-      225: ["-sqrt2half", "-sqrt2half"], 240: ["-half", "-sqrt3half"],
-      270: ["0", "-1"], 300: ["half", "-sqrt3half"],
-      315: ["sqrt2half", "-sqrt2half"], 330: ["sqrt3half", "-half"]
-    };
-    function coordinateComponent(value) {
-      const negative = value.startsWith("-");
-      const key = negative ? value.slice(1) : value;
-      const fractions = { half: "1", sqrt2half: "√2", sqrt3half: "√3" };
-      const sign = negative ? '<span class="negative">−</span>' : '';
-      if (fractions[key]) {
-        return `${sign}<span class="frac"><span class="num">${fractions[key]}</span><span class="den">2</span></span>`;
-      }
-      return `${sign}${key}`;
-    }
-    function coordinateHTML(deg) {
-      const [x, y] = coords[deg];
-      return `<span class="ordered-pair">(${coordinateComponent(x)}, ${coordinateComponent(y)})</span>`;
-    }
-    function coordinatePlain(deg) {
-      const map = { half: "1/2", sqrt2half: "√2/2", sqrt3half: "√3/2" };
-      return `(${coords[deg].map(v => (v.startsWith('-') ? '−' : '') + (map[v.replace('-', '')] || v.replace('-', ''))).join(', ')})`;
-    }
-    const $ = id => document.getElementById(id);
-    const hotspotsGroup = $("hotspots"), feedback = $("feedback");
-    let current = null, score = 0, attempts = 0, streak = 0, bestStreak = 0;
-    let locked = false, bag = [], nextQuestionTimeout = null, flashTimeout = null;
-    let challengeStarted = false, challengeFinished = false, solved = new Set(), misses = 0;
-    // Timekeeping using a monotonic clock; stopped time does not count.
-    let elapsedBeforePause = 0, startedAt = null, paused = false;
-    const challengeMode = () => $("gameType").value === "challenge";
-    function elapsedMs() { return elapsedBeforePause + (startedAt === null ? 0 : performance.now() - startedAt); }
-    function updateTimer() {
-      const totalSeconds = Math.floor(elapsedMs() / 1000);
-      const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
-      const seconds = String(totalSeconds % 60).padStart(2, "0");
-      $("timer").textContent = `${minutes}:${seconds}`;
-    }
-    function stopClock() {
-      elapsedBeforePause = elapsedMs();
-      startedAt = null;
-      updateTimer();
-    }
-    function startClock() { if (!paused && startedAt === null) startedAt = performance.now(); }
-    function togglePause() {
-      if (challengeMode() && (!challengeStarted || challengeFinished)) return;
-      if (paused) {
-        paused = false;
-        startedAt = performance.now();
-        $("pauseBtn").textContent = "Pause";
-        feedback.textContent = "";
-      } else {
-        stopClock();
-        paused = true;
-        $("pauseBtn").textContent = "Resume";
-        feedback.textContent = "Paused — press Resume to continue.";
-        feedback.className = "feedback";
-      }
-    }
-    function resetTimer(start = false) {
-      elapsedBeforePause = 0;
-      startedAt = start ? performance.now() : null;
-      paused = false;
-      $("pauseBtn").textContent = "Pause";
-      updateTimer();
-    }
-    setInterval(updateTimer, 100);
-    function shuffle(arr) {
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-      return arr;
-    }
-    function refillBag() { bag = shuffle([...angles]); }
-    function getNextAngle() { if (!bag.length && !challengeMode()) refillBag(); return bag.pop() || null; }
-    function polarToXY(deg) {
-      const rad = deg * Math.PI / 180;
-      return { x: 350 + 240 * Math.cos(rad), y: 350 - 240 * Math.sin(rad) };
-    }
-    function createHotspots() {
-      hotspotsGroup.innerHTML = "";
-      angles.forEach(item => {
-        const p = polarToXY(item.deg);
-        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-        const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        dot.setAttribute("cx", p.x);
-        dot.setAttribute("cy", p.y);
-        dot.setAttribute("r", 15);
-        dot.setAttribute("class", "hotspot");
-        dot.setAttribute("data-deg", item.deg);
-        dot.setAttribute("tabindex", "0");
-        dot.setAttribute("role", "button");
-        dot.setAttribute("aria-label", `Unit circle location ${item.deg} degrees`);
-        dot.addEventListener("click", handleGuess);
-        dot.addEventListener("keydown", event => {
-          if (event.key === "Enter" || event.key === " ") { event.preventDefault(); handleGuess.call(dot); }
-        });
-        const check = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        check.setAttribute("x", p.x);
-        check.setAttribute("y", p.y + 1);
-        check.setAttribute("class", "done-check");
-        check.textContent = "✓";
-        check.style.display = "none";
-        g.append(dot, check);
-        hotspotsGroup.appendChild(g);
-      });
-    }
-    function refreshHotspots(wrong = null) {
-      document.querySelectorAll(".hotspot").forEach(dot => {
-        const deg = Number(dot.getAttribute("data-deg"));
-        const done = challengeMode() && solved.has(deg);
-        dot.setAttribute("class", "hotspot" + (done ? " done" : "") + (deg === wrong ? " wrong" : ""));
-        dot.nextSibling.style.display = done ? "" : "none";
-        dot.setAttribute("aria-label", `Unit circle location ${deg} degrees${done ? ', completed' : ''}`);
-      });
-    }
-    function updateScoreboard() {
-      $("score").textContent = score;
-      $("attempts").textContent = attempts;
-      $("streak").textContent = streak;
-      $("bestStreak").textContent = bestStreak;
-      $("completed").textContent = solved.size;
-      $("misses").textContent = misses;
-    }
-    function displayQuestion() {
-      const mode = $("mode").value;
-      const types = ["degrees", "radians", "points"];
-      const displayMode = mode === "mixed" ? types[Math.floor(Math.random() * types.length)] : mode;
-      const question = $("questionAngle");
-      if (displayMode === "points") question.innerHTML = coordinateHTML(current.deg);
-      else question.textContent = displayMode === "degrees" ? `${current.deg}°` : current.rad;
-    }
-    function clearPending() {
-      clearTimeout(nextQuestionTimeout); nextQuestionTimeout = null;
-      clearTimeout(flashTimeout); flashTimeout = null;
-    }
-    function showQuestion() {
-      clearPending();
-      if (challengeMode() && (!challengeStarted || challengeFinished)) return;
-      locked = false;
-      refreshHotspots();
-      feedback.textContent = "";
-      feedback.className = "feedback";
-      current = getNextAngle();
-      if (!current) return;
-      displayQuestion();
-      if (!challengeMode()) startClock();
-    }
-    function setFeedback(text, type = "") { feedback.textContent = text; feedback.className = "feedback" + (type ? ` ${type}` : ""); }
-    function finishChallenge() {
-      challengeFinished = true;
-      locked = true;
-      current = null;
-      stopClock();
-      $("pauseBtn").disabled = true;
-      $("startBtn").textContent = "Play Again";
-      $("startBtn").classList.remove("hidden");
-      $("questionAngle").textContent = "🎉 All 16 complete!";
-      $("questionAngle").classList.add("completion");
-      $("questionAngle").style.fontSize = "2rem";
-      setFeedback(`Finished in ${$("timer").textContent} with ${misses} miss${misses === 1 ? '' : 'es'}!`, "correct");
-      $("instructions").textContent = "Challenge complete! All 16 positions are green. Select Play Again to try for a faster time.";
-    }
-    function handleGuess() {
-      if (locked || paused || !current || (challengeMode() && (!challengeStarted || challengeFinished))) return;
-      const guessed = Number(this.getAttribute("data-deg"));
-      if (challengeMode() && solved.has(guessed)) {
-        setFeedback("That location is already completed. Choose another!", "incorrect");
-        return;
-      }
-      attempts++;
-      if (guessed === current.deg) {
-        locked = true;
-        score++; streak++; bestStreak = Math.max(bestStreak, streak);
-        if (challengeMode()) {
-          solved.add(guessed);
-          refreshHotspots();
-          updateScoreboard();
-          if (solved.size === angles.length) { finishChallenge(); return; }
-          setFeedback(`Correct! ${solved.size} of ${angles.length} completed.`, "correct");
-        } else {
-          refreshHotspots();
-          this.classList.add("correct");
-          setFeedback("Correct!", "correct");
-          updateScoreboard();
-        }
-        nextQuestionTimeout = setTimeout(showQuestion, 750);
-      } else {
-        streak = 0;
-        misses++;
-        refreshHotspots(guessed);
-        if (challengeMode()) {
-          setFeedback("Not quite — try again. Your current question stays active.", "incorrect");
-          clearTimeout(flashTimeout);
-          flashTimeout = setTimeout(() => refreshHotspots(), 500);
-        } else {
-          locked = true;
-          const right = document.querySelector(`.hotspot[data-deg="${current.deg}"]`);
-          if (right) right.classList.add("answer");
-          setFeedback(`Not quite. Correct location: ${current.deg}° = ${current.rad} = ${coordinatePlain(current.deg)}`, "incorrect");
-          nextQuestionTimeout = setTimeout(showQuestion, 1300);
-        }
-      }
-      updateScoreboard();
-    }
-    function resetGame() {
-      clearPending();
-      score = 0; attempts = 0; streak = 0; bestStreak = 0; misses = 0;
-      solved.clear(); refillBag(); current = null; locked = true;
-      challengeStarted = false; challengeFinished = false;
-      $("questionAngle").classList.remove("completion");
-      $("questionAngle").style.fontSize = "";
-      resetTimer(false);
-      refreshHotspots(); updateScoreboard();
-      const challenge = challengeMode();
-      $("challengeProgress").classList.toggle("hidden", !challenge);
-      $("startBtn").classList.toggle("hidden", !challenge);
-      $("startBtn").textContent = "Start Challenge";
-      $("newQuestionBtn").classList.toggle("hidden", challenge);
-      $("resetTimerBtn").classList.toggle("hidden", challenge);
-      $("pauseBtn").disabled = challenge;
-      if (challenge) {
-        $("questionAngle").textContent = "Ready for all 16 angles?";
-        setFeedback("Press Start Challenge to begin the timer.");
-        $("instructions").textContent = "Challenge: 16 unique positions. Correct locations turn green ✓ and stay completed. Misses count, but you retry until correct.";
-      } else {
-        $("instructions").textContent = "Continuous Practice: answer as many as you like. The stopwatch runs while you play.";
-        showQuestion();
-      }
-    }
-    function startChallenge() {
-      resetGame();
-      challengeStarted = true;
-      locked = false;
-      $("startBtn").classList.add("hidden");
-      $("pauseBtn").disabled = false;
-      resetTimer(true);
-      showQuestion();
-    }
-    $("startBtn").addEventListener("click", startChallenge);
-    $("newQuestionBtn").addEventListener("click", showQuestion);
-    $("resetBtn").addEventListener("click", resetGame);
-    $("resetTimerBtn").addEventListener("click", () => resetTimer(true));
-    $("pauseBtn").addEventListener("click", togglePause);
-    $("mode").addEventListener("change", resetGame);
-    $("gameType").addEventListener("change", resetGame);
-    createHotspots(); resetGame();
-  </script>
-</body>
-</html>
+<div class="wrap">
+ <header class="head"><div><h1>Unit Circle · Trig Values</h1><p>Explore the circle, then evaluate all six trigonometric functions.</p></div><span class="question-tag">EXACT VALUES</span></header>
+ <main class="layout">
+  <section class="board" aria-label="Interactive unit circle"><svg id="circle" viewBox="0 0 700 700" role="group" aria-label="Click any standard unit circle point to inspect its coordinates">
+   <line class="axis" x1="55" y1="350" x2="645" y2="350"/><line class="axis" x1="350" y1="55" x2="350" y2="645"/>
+   <circle class="circle-outline" cx="350" cy="350" r="245"/><line class="ray hide" id="ray" x1="350" y1="350" x2="595" y2="350"/>
+   <text class="axislabel" x="651" y="355">x</text><text class="axislabel" x="360" y="47">y</text><circle cx="350" cy="350" r="4" fill="#152944"/>
+   <g id="dots"></g>
+  </svg><p class="board-note">Click any of the 16 points to reveal its exact coordinate. This does not count as an answer.</p></section>
+  <aside class="sidebar">
+   <section class="section"><h2>Game settings</h2><div class="two"><div><label for="game">Game type</label><select id="game"><option value="continuous">Continuous</option><option value="challenge">16-Question Challenge</option></select></div><div><label for="angleMode">Angle format</label><select id="angleMode"><option value="mixed">Mixed</option><option value="radians">Radians</option><option value="degrees">Degrees</option></select></div><div><label for="functions">Functions</label><select id="functions"><option value="all">Sin / Cos / Tan</option><option value="six">All 6 Functions</option><option value="sin">Sine only</option><option value="cos">Cosine only</option><option value="tan">Tangent only</option><option value="sec">Secant only</option><option value="csc">Cosecant only</option><option value="cot">Cotangent only</option></select></div><div><label for="autoAdvance">After answering</label><select id="autoAdvance"><option value="manual">Next button</option><option value="automatic">Auto advance</option></select></div></div><div class="buttons"><button id="start" class="primary wide hide">Start Challenge</button><button id="next">Next Question</button><button id="reset">Reset Game</button></div></section>
+   <section class="section prompt-wrap"><h2>Evaluate the trig function</h2><div class="prompt"><div class="kicker" id="questionCount">Choose the correct exact value</div><div class="expr" id="expression"></div><div class="choice-grid" id="choices"></div><div class="feedback" id="feedback" aria-live="polite"></div></div><div id="cover" class="overlay hide"><div><h3 id="coverTitle">Ready?</h3><p id="coverBody">Click Start Challenge to begin.</p></div></div></section>
+   <section class="section"><h2>Time &amp; stats</h2><div class="timer" id="timer">00:00</div><div class="buttons"><button id="pause">Pause</button><button id="timerReset">Reset Timer</button></div><div class="statsline"><span>Correct / Attempts</span><b id="score">0 / 0</b></div><div class="statsline"><span>Current streak</span><b id="streak">0</b></div><div class="statsline"><span>Best streak</span><b id="best">0</b></div><div class="statsline"><span>Misses</span><b id="misses">0</b></div><div class="statsline hide" id="completedRow"><span>Completed</span><b id="completed">0 / 16</b></div><div class="progress hide" id="progress"><div class="fill" id="progressFill"></div></div></section>
+   <section class="section"><h2>Circle coordinate explorer</h2><div class="ref" id="coordinate"><span class="mute">Select any point on the circle to see (cos θ, sin θ).</span></div><button id="clearPoint" style="width:100%;margin-top:8px">Clear highlight</button></section>
+  </aside>
+ </main><p class="note">Undefined values are included for tan, sec, csc, and cot where appropriate. Challenge mode tests each of the 16 standard angles once.</p>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const angles=[0,30,45,60,90,120,135,150,180,210,225,240,270,300,315,330];
+const radians={0:'0',30:'π/6',45:'π/4',60:'π/3',90:'π/2',120:'2π/3',135:'3π/4',150:'5π/6',180:'π',210:'7π/6',225:'5π/4',240:'4π/3',270:'3π/2',300:'5π/3',315:'7π/4',330:'11π/6'};
+const co={0:['1','0'],30:['r3/2','1/2'],45:['r2/2','r2/2'],60:['1/2','r3/2'],90:['0','1'],120:['-1/2','r3/2'],135:['-r2/2','r2/2'],150:['-r3/2','1/2'],180:['-1','0'],210:['-r3/2','-1/2'],225:['-r2/2','-r2/2'],240:['-1/2','-r3/2'],270:['0','-1'],300:['1/2','-r3/2'],315:['r2/2','-r2/2'],330:['r3/2','-1/2']};
+const tans={0:'0',30:'r3/3',45:'1',60:'r3',90:'undefined',120:'-r3',135:'-1',150:'-r3/3',180:'0',210:'r3/3',225:'1',240:'r3',270:'undefined',300:'-r3',315:'-1',330:'-r3/3'};
+const valuePool=['0','1','-1','1/2','-1/2','r2/2','-r2/2','r3/2','-r3/2','r3/3','-r3/3','r3','-r3','2','-2','r2','-r2','2r3/3','-2r3/3','undefined'];
+const reciprocal={
+  '0':'undefined','1':'1','-1':'-1',
+  '1/2':'2','-1/2':'-2',
+  'r2/2':'r2','-r2/2':'-r2',
+  'r3/2':'2r3/3','-r3/2':'-2r3/3',
+  'r3/3':'r3','-r3/3':'-r3',
+  'r3':'r3/3','-r3':'-r3/3',
+  'undefined':'0'
+};
+const trigFunctions=['sin','cos','tan','sec','csc','cot'];
+function activeFunctions(){const mode=$('functions').value;return mode==='six'?trigFunctions:mode==='all'?trigFunctions.slice(0,3):[mode]}
+
+function mathHTML(k){if(k==='undefined')return '<span style="font-size:.7em">undefined</span>';let neg=k[0]==='-';if(neg)k=k.slice(1);let numerator=k,denominator=null;if(k.includes('/'))[numerator,denominator]=k.split('/');numerator=numerator.replace('r2','√2').replace('r3','√3');return (neg?'−':'')+(denominator?`<span class="frac"><span>${numerator}</span><span>${denominator}</span></span>`:numerator)}
+function angleHTML(deg, mode){
+  if(mode==='degrees')return `<span class="math-angle">${deg}°</span>`;
+  const rad=radians[deg];
+  if(!rad.includes('/'))return `<span class="math-angle">${rad}</span>`;
+  const [top,bottom]=rad.split('/');
+  return `<span class="math-angle"><span class="frac"><span>${top}</span><span>${bottom}</span></span></span>`;
+}
+function angleSpeech(deg, mode){
+  return mode==='degrees'?`${deg} degrees`:`${radians[deg]} radians`;
+}
+function expressionHTML(fn, deg, mode){
+  return `<span class="function-name">${fn}</span><span class="paren">(</span>${angleHTML(deg,mode)}<span class="paren">)</span>`;
+}
+function coordsHTML(deg){return `<span class="coord">(${mathHTML(co[deg][0])}, ${mathHTML(co[deg][1])})</span>`}
+function polar(deg){let a=deg*Math.PI/180;return [350+245*Math.cos(a),350-245*Math.sin(a)]}
+const SVG='http://www.w3.org/2000/svg';for(const deg of angles){const [x,y]=polar(deg);let g=document.createElementNS(SVG,'g'),dot=document.createElementNS(SVG,'circle');dot.setAttribute('cx',x);dot.setAttribute('cy',y);dot.setAttribute('r',14);dot.setAttribute('class','dot');dot.setAttribute('tabindex','0');dot.setAttribute('role','button');dot.setAttribute('aria-label',`${deg} degrees, inspect coordinate`);dot.dataset.deg=deg;dot.addEventListener('click',()=>selectPoint(deg));dot.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();selectPoint(deg)}});g.append(dot);$('dots').append(g)}
+function selectPoint(deg){document.querySelectorAll('.dot').forEach(n=>n.classList.toggle('selected',+n.dataset.deg===deg));let [x,y]=polar(deg);$('ray').setAttribute('x2',x);$('ray').setAttribute('y2',y);$('ray').classList.remove('hide');$('coordinate').innerHTML=`<strong>${deg}° = ${angleHTML(deg,"radians")} rad</strong><div style="margin-top:5px">${coordsHTML(deg)}</div><div class="mute" style="margin-top:5px">x = cos θ &nbsp; · &nbsp; y = sin θ</div>`}
+$('clearPoint').onclick=()=>{document.querySelectorAll('.dot').forEach(n=>n.classList.remove('selected'));$('ray').classList.add('hide');$('coordinate').innerHTML='<span class="mute">Select any point on the circle to see (cos θ, sin θ).</span>'};
+function shuffle(arr){for(let i=arr.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}return arr}
+let current=null,answered=false,score=0,attempts=0,streak=0,best=0,misses=0,completed=0,challengeBag=[],practiceBag=[],running=false,paused=false,finished=false,timeBase=0,timeStart=null,nextTimeout=null;
+const challenge=()=>$('game').value==='challenge';
+function questionResult(func,deg){
+ if(func==='cos')return co[deg][0];
+ if(func==='sin')return co[deg][1];
+ if(func==='tan')return tans[deg];
+ if(func==='sec')return reciprocal[co[deg][0]];
+ if(func==='csc')return reciprocal[co[deg][1]];
+ if(func==='cot')return reciprocal[tans[deg]];
+}
+function randomFunc(){const choices=activeFunctions();return choices[Math.floor(Math.random()*choices.length)]}
+
+function getAngleMode(){let mode=$('angleMode').value;return mode==='mixed'?(Math.random()<.5?'degrees':'radians'):mode}
+function makeChoices(correct){
+ // Distractors are distinct, valid exact trig values from the six-function unit circle.
+ let alternatives=valuePool.filter(v=>v!==correct);
+ shuffle(alternatives);
+ return shuffle([correct,...alternatives.slice(0,3)]);
+}
+function nextQuestion(){clearTimeout(nextTimeout);if(challenge()&&!running)return;if(paused||finished)return;if(challenge()&&!challengeBag.length){completeChallenge();return}if(!challenge()&&!practiceBag.length){practiceBag=shuffle(angles.flatMap(deg=>activeFunctions().map(fn=>({deg,fn}))))}let deg,fn;if(challenge()){deg=challengeBag.pop();fn=randomFunc()}else{let item=practiceBag.pop();deg=item.deg;fn=item.fn}let correct=questionResult(fn,deg);current={deg,fn,correct};answered=false;const displayMode=getAngleMode();$('expression').innerHTML=expressionHTML(fn,deg,displayMode);$('expression').setAttribute('aria-label',`${fn} of ${angleSpeech(deg,displayMode)}`);$('questionCount').textContent=challenge()?`Question ${completed+1} of 16`:'Choose the correct exact value';$('feedback').textContent='';$('feedback').className='feedback';$('choices').innerHTML='';makeChoices(correct).forEach(v=>{const b=document.createElement('button');b.className='choice';b.innerHTML=mathHTML(v);b.setAttribute('aria-label',v==='undefined'?'undefined':v.replace('r2','square root of 2').replace('r3','square root of 3'));b.addEventListener('click',()=>answer(v,b));$('choices').append(b)});$('next').disabled=challenge()||false;if(challenge())$('next').disabled=true}
+function answer(value,button){if(answered||paused||finished||(challenge()&&!running))return;answered=true;attempts++;if(challenge())completed++;if(value===current.correct){score++;streak++;best=Math.max(streak,best);$('feedback').textContent='✓ Correct!';$('feedback').className='feedback ok';button.classList.add('right')}else{misses++;streak=0;$('feedback').textContent='Not quite. The correct answer is highlighted.';$('feedback').className='feedback no';button.classList.add('wrong')}
+[...$('choices').children].forEach(b=>{b.disabled=true;if(b.innerHTML===mathHTML(current.correct))b.classList.add('right')});updateStats();if(challenge()&&completed===16){finished=true;running=false;stopTimer();$('feedback').textContent=`Challenge complete! ${score}/16 correct · ${misses} misses · ${$('timer').textContent}`;$('feedback').className='feedback ok';$('next').disabled=true;return}if(challenge()&&challengeBag.length===0){finished=true;running=false;stopTimer();$('feedback').textContent=`Challenge complete! ${score}/16 correct · ${misses} misses · ${$('timer').textContent}`;$('feedback').className='feedback ok';$('next').disabled=true;return}$('next').disabled=false;if($('autoAdvance').value==='automatic')nextTimeout=setTimeout(nextQuestion,1300)}
+function updateStats(){$('score').textContent=`${score} / ${attempts}`;$('streak').textContent=streak;$('best').textContent=best;$('misses').textContent=misses;$('completed').textContent=`${completed} / 16`;$('progressFill').style.width=`${completed/16*100}%`}
+function elapsed(){return timeBase+(timeStart===null?0:performance.now()-timeStart)}function renderTime(){let s=Math.floor(elapsed()/1000);$('timer').textContent=`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`}function startTimer(){if(timeStart===null)timeStart=performance.now()}function stopTimer(){timeBase=elapsed();timeStart=null;renderTime()}function resetTimer(){timeBase=0;timeStart=null;renderTime();if(running&&!paused)startTimer()}
+setInterval(renderTime,150);
+function cover(title,body){$('coverTitle').textContent=title;$('coverBody').textContent=body;$('cover').classList.remove('hide')}function uncover(){$('cover').classList.add('hide')}
+function resetGame(){clearTimeout(nextTimeout);score=attempts=streak=best=misses=completed=0;current=null;answered=false;paused=false;finished=false;running=!challenge();challengeBag=shuffle([...angles]);practiceBag=[];resetTimer();$('pause').textContent='Pause';$('start').classList.toggle('hide',!challenge());$('next').classList.toggle('hide',challenge());$('completedRow').classList.toggle('hide',!challenge());$('progress').classList.toggle('hide',!challenge());$('timerReset').disabled=challenge();$('pause').disabled=challenge();$('angleMode').disabled=false;$('functions').disabled=false;$('expression').textContent='';$('choices').innerHTML='';$('feedback').textContent='';updateStats();if(challenge()){cover('Ready for the challenge?','16 questions · one for each standard angle. Your time begins when you press Start Challenge.');$('next').disabled=true}else{uncover();startTimer();nextQuestion()}}
+function completeChallenge(){if(finished)return;finished=true;running=false;stopTimer();cover('Challenge finished!',`${score} correct · ${misses} misses · ${$('timer').textContent}. Press Reset Game to try again.`)}
+$('start').onclick=()=>{if(!challenge()||running)return;running=true;paused=false;uncover();$('start').classList.add('hide');$('next').classList.remove('hide');$('pause').disabled=false;startTimer();nextQuestion()};
+$('next').onclick=()=>{if(!challenge()||running){if(answered||!current)nextQuestion()}};
+$('reset').onclick=resetGame;$('game').onchange=resetGame;$('angleMode').onchange=()=>{if(!challenge()){practiceBag=[];nextQuestion()}else if(!running){}else {}};$('functions').onchange=()=>{practiceBag=[];if(!challenge())nextQuestion();else {}};
+$('pause').onclick=()=>{if(!running||finished)return;if(paused){paused=false;startTimer();uncover();$('pause').textContent='Pause'}else{paused=true;stopTimer();cover('Paused','Press Resume to continue.');$('pause').textContent='Resume'}};
+$('timerReset').onclick=()=>{if(!challenge())resetTimer()};
+resetGame();
+</script>
+</body></html>
